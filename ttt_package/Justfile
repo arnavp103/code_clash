@@ -1,0 +1,17 @@
+server_binary := if os() == "macos" { "./server/ttt_server_macos_cli" } else if os() == "windows" { "./server/ttt_server_windows_cli.exe" } else { "./server/ttt_server_linux_cli" }
+
+gui_binary := if os() == "macos" { "./server/ttt_server_macos" } else if os() == "windows" { "./server/ttt_server_windows.exe" } else { "./server/ttt_server_linux" }
+
+default: run-cli-test
+
+run-cli-test:
+	{{server_binary}} --bot-x ./dist/bot --bot-o ./dist/bot --test
+
+run-cli:
+	{{server_binary}} --bot-x ./dist/bot --bot-o ./dist/bot
+
+run-gui:
+	{{gui_binary}}
+
+build:
+	uv sync && uvx pyinstaller --onefile bot/python/bot.py
