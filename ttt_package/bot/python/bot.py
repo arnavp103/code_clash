@@ -23,6 +23,11 @@ import sys
 import json
 from evaluate import evaluate_board
 from common import *
+from tranposition_table import init_table
+from ttt_package.bot.python.tranposition_table import computeHash
+
+ZTable = init_table()
+TranspositionTable = {}
 
 
 def get_valid_moves(board: JSONBoard) -> list[Move]:
@@ -53,8 +58,8 @@ def choose_move(board: JSONBoard, player: Player) -> Move | None:
             board,
             depth=3,
             maximizing_player=False,
-            alpha=float("-inf"),
-            beta=float("inf"),
+            alpha=-inf,
+            beta=inf,
         )
         # Undo the hypothetical move
         board[row][col] = ""
@@ -84,6 +89,9 @@ def alpha_beta_pruning(
     """
     # Terminal conditions
     if depth == 0:
+        hash = computeHash(board, ZTable)
+        if hash in TranspositionTable:
+            return TranspositionTable[hash]
         return evaluate_board(board, "X" if maximizing_player else "O")
 
     valid_moves = get_valid_moves(board)
