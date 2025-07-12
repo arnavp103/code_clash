@@ -19,12 +19,244 @@ How to package your bot as a single file:
 For rules, move format, and submission details see design_doc.md.
 """
 
+import time
 import sys
 import json
+from enum import Enum
 from typing import Literal
 import evaluate
 
-type Board = list[list[Literal["X", "O", ""]]]
+Board = list[list[Literal["X", "O", ""]]]
+
+
+class TTFlag(Enum):
+    EXACT = 0
+    LOWER_BOUND = 1  # Alpha cutoff
+    UPPER_BOUND = 2  # Beta cutoff
+
+
+class TTEntry:
+    def __init__(self, depth, value, flag, best_move=None):
+        self.depth = depth
+        self.value = value
+        self.flag = flag
+        self.best_move = best_move
+
+
+class TranspositionTable:
+    def __init__(self, size_mb=256):
+        # Fixed size hash table to control memory
+        self.size = (size_mb * 1024 * 1024) // 32
+        self.table = {}
+
+    def store(self, board_hash, depth, value, flag, best_move=None):
+        # Always replace for simplicity (could use depth-preferred replacement)
+        self.table[board_hash % self.size] = TTEntry(depth, value, flag, best_move)
+
+    def probe(self, board_hash):
+        return self.table.get(board_hash % self.size)
+
+
+class MinimaxBot:
+    def __init__(self, eval_function, time_limit=4.8):
+        self.evaluate = eval_function
+        self.time_limit = time_limit
+        self.tt = TranspositionTable()
+        self.nodes_searched = 0
+        self.time_up = False
+        self.start_time = 0
+        self.zobrist_table = {}
+        self.player = "X"
+        self.initialize_zobrist()
+
+    def get_move(self, board):
+        self.start_time = time.time()
+        self.time_up = False
+        best_move = None
+
+        # Get all legal moves
+        legal_moves = get_valid_moves(board)
+        if len(legal_moves) == 1:
+            return legal_moves[0]
+
+        # Iterative deepening
+        for depth in range(1, 100):
+            self.nodes_searched = 0
+
+            try:
+                # Search with current depth
+                value, move = self.minimax_root(board, depth)
+
+                # Only update best move if search completed
+                if move is not None:
+                    best_move = move
+                    print(
+                        f"Depth {depth}: best_move={move}, value={value:.3f}, nodes={self.nodes_searched}"
+                    )
+
+                # Check if we have time for another iteration
+                elapsed = time.time() - self.start_time
+                if elapsed > self.time_limit * 0.4:  # If 40% time used
+                    # Estimate time for next iteration (exponential growth)
+                    if self.nodes_searched > 0:
+                        time_per_node = elapsed / self.nodes_searched
+                        estimated_next = time_per_node * (
+                            self.nodes_searched * 3
+                        )  # Branching factor estimate
+                        if elapsed + estimated_next > self.time_limit * 0.9:
+                            break
+
+            except TimeoutError:
+                break
+
+        return best_move
+
+    def minimax_root(self, board, depth):
+        best_move = None
+        best_value = -float("inf")
+        alpha = -float("inf")
+        beta = float("inf")
+
+        moves = get_valid_moves(board)
+        board_hash = self.hash_board(board)
+        tt_entry = self.tt.probe(board_hash)
+
+        if tt_entry and tt_entry.best_move and tt_entry.best_move in moves:
+            # Put TT move first
+            moves.remove(tt_entry.best_move)
+            moves.insert(0, tt_entry.best_move)
+
+        # Try each move
+        for move in moves:
+            child_board = self.make_move(board, move)
+
+            value = -self.alphabeta(child_board, depth - 1, -beta, -alpha, False)
+
+            if value > best_value:
+                best_value = value
+                best_move = move
+
+            alpha = max(alpha, value)
+
+        # Store in TT
+        self.tt.store(board_hash, depth, best_value, TTFlag.EXACT, best_move)
+
+        return best_value, best_move
+
+    def alphabeta(self, board, depth, alpha, beta, maximizing_player):
+        # Time check (every N nodes to reduce overhead)
+        self.nodes_searched += 1
+        if self.nodes_searched % 1000 == 0:
+            if time.time() - self.start_time > self.time_limit:
+                self.time_up = True
+                raise TimeoutError()
+
+        # Transposition table lookup
+        board_hash = self.hash_board(board)
+        tt_entry = self.tt.probe(board_hash)
+
+        if tt_entry and tt_entry.depth >= depth:
+            if tt_entry.flag == TTFlag.EXACT:
+                return tt_entry.value
+            elif tt_entry.flag == TTFlag.LOWER_BOUND:
+                alpha = max(alpha, tt_entry.value)
+            elif tt_entry.flag == TTFlag.UPPER_BOUND:
+                beta = min(beta, tt_entry.value)
+
+            if alpha >= beta:
+                return tt_entry.value
+
+        # Terminal node or depth 0
+        if depth == 0 or self.is_game_over(board):
+            value = self.evaluate(board)
+            self.tt.store(board_hash, 0, value, TTFlag.EXACT)
+            return value
+
+        # todo: implement better move ordering
+        moves = get_valid_moves(board)
+
+        if maximizing_player:
+            value = -float("inf")
+            best_move = None
+            flag = TTFlag.UPPER_BOUND  # Assume fail-low
+
+            for move in moves:
+                child_board = self.make_move(board, move)
+                child_value = self.alphabeta(child_board, depth - 1, alpha, beta, False)
+
+                if child_value > value:
+                    value = child_value
+                    best_move = move
+
+                if value > alpha:
+                    alpha = value
+                    flag = TTFlag.EXACT  # Found exact value
+
+                if alpha >= beta:
+                    flag = TTFlag.LOWER_BOUND
+                    break
+
+            self.tt.store(board_hash, depth, value, flag, best_move)
+            return value
+
+        else:
+            value = float("inf")
+            best_move = None
+            flag = TTFlag.LOWER_BOUND  # Assume fail-high
+
+            for move in moves:
+                child_board = self.make_move(board, move)
+                child_value = self.alphabeta(child_board, depth - 1, alpha, beta, True)
+
+                if child_value < value:
+                    value = child_value
+                    best_move = move
+
+                if value < beta:
+                    beta = value
+                    flag = TTFlag.EXACT
+
+                if alpha >= beta:
+                    flag = TTFlag.UPPER_BOUND  # Fail-low
+                    break
+
+            self.tt.store(board_hash, depth, value, flag, best_move)
+            return value
+
+    def initialize_zobrist(self):
+        # Initialize random numbers for each piece/position
+        self.zobrist_table = {}
+        import random
+
+        random.seed(42)  # Reproducible
+
+        for row in range(11):
+            for col in range(11):
+                self.zobrist_table[(row, col, "X")] = random.getrandbits(64)
+                self.zobrist_table[(row, col, "O")] = random.getrandbits(64)
+
+    def hash_board(self, board):
+        h = 0
+        for row in range(len(board)):
+            for col in range(len(board[0]) if board else 0):
+                piece = board[row][col]
+                if (
+                    piece != "."
+                    and piece != ""
+                    and (row, col, piece) in self.zobrist_table
+                ):
+                    h ^= self.zobrist_table[(row, col, piece)]
+        return h
+
+    def is_game_over(self, board):
+        return len(get_valid_moves(board)) == 0
+
+    def make_move(self, board, move):
+        """write to state.json"""
+        row, col = move
+        new_board = [list(r) for r in board]
+        new_board[row][col] = self.player
+        return new_board
 
 
 def get_valid_moves(board: Board) -> list[tuple[int, int]]:
@@ -35,111 +267,6 @@ def get_valid_moves(board: Board) -> list[tuple[int, int]]:
             if cell == "":
                 moves.append((i, j))
     return moves
-
-
-def choose_move(board: Board, player: Literal["X"] | Literal["O"]) -> tuple[int, int]:
-    """
-    Should return a tuple (row, col) from get_valid_moves(board).
-    """
-    valid = get_valid_moves(board)
-    if not valid:
-        raise ValueError("No valid moves available")
-
-    best_eval = float("-inf")
-    best_move = None
-    for valid_move in valid:
-        # Make a hypothetical move
-        row, col = valid_move
-        board[row][col] = player
-        evaluation = alpha_beta_pruning(
-            board,
-            depth=3,
-            maximizing_player=False,
-            alpha=float("-inf"),
-            beta=float("inf"),
-        )
-        # Undo the hypothetical move
-        board[row][col] = ""
-
-        # flip the evaluation if the player is "O"
-        if player == "O":
-            evaluation = -evaluation
-
-        if evaluation > best_eval:
-            best_eval = evaluation
-            best_move = valid_move
-
-    move = best_move if best_move else None
-
-    if move is None:
-        raise ValueError("No valid moves found after evaluation")
-    return move
-
-
-def alpha_beta_pruning(
-    board: Board,
-    depth: int,
-    maximizing_player: bool,
-    alpha: float = float("-inf"),
-    beta: float = float("inf"),
-) -> float:
-    """
-    Minimax algorithm with alpha-beta pruning to evaluate the board position.
-    Returns the evaluation score for the current position.
-    """
-    # Terminal conditions
-    if depth == 0:
-        return evaluate.evaluate_board(board)
-
-    valid_moves = get_valid_moves(board)
-    if not valid_moves:
-        raise ValueError("No valid moves available")
-
-    print(
-        "Evaluating board at depth",
-        depth,
-        "for player",
-        "X" if maximizing_player else "O",
-        end=" ",
-    )
-
-    if maximizing_player:
-        value = float("-inf")
-        for row, col in valid_moves:
-            # Make move
-            board[row][col] = "X"  # Since we are maximizing for "X"
-            # Recursive call
-            eval_score = alpha_beta_pruning(board, depth - 1, False, alpha, beta)
-            # Undo move
-            board[row][col] = ""
-
-            value = max(value, eval_score)
-
-            if value > beta:
-                break  # Beta cut-off
-
-            alpha = max(alpha, value)
-
-        print("->", value)
-        return value
-    else:
-        value = float("inf")
-        for row, col in valid_moves:
-            # Make move
-            board[row][col] = "O"  # Since we are minimizing for "O"
-            # Recursive call
-            eval_score = alpha_beta_pruning(board, depth - 1, True, alpha, beta)
-            # Undo move
-            board[row][col] = ""
-
-            value = min(value, eval_score)
-
-            if value < alpha:
-                break  # Alpha cut-off
-
-            beta = min(beta, value)
-        print("->", value)
-        return value
 
 
 def main():
@@ -160,7 +287,20 @@ def main():
 
     # 2) Choose move
     try:
-        row, col = choose_move(board, player)  # pylint: disable=unpacking-non-sequence
+        def eval_wrapper(board):
+            return evaluate.evaluate_board(board, player)
+        
+        bot = MinimaxBot(eval_wrapper)
+        bot.player = player
+        move = bot.get_move(board)
+        if move is None:
+            # Fallback: return first available move
+            valid_moves = get_valid_moves(board)
+            if valid_moves:
+                move = valid_moves[0]
+            else:
+                raise ValueError("No valid moves available")
+        row, col = move
     except Exception as e:  # pylint: disable=broad-except
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
