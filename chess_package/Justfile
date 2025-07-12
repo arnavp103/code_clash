@@ -1,0 +1,14 @@
+server_binary := if os() == "macos" {"./server/chess_server_macos"} else if os() == "windows" {"./server/chess_server_windows.exe"} else {"./server/chess_server_linux"}
+
+viewer_binary := if os() == "macos" {"./server/chess_UI_macos"} else if os() == "windows" {"./server/chess_UI_windows.exe"} else {"./server/chess_UI_linux"}
+
+default: build run-server
+
+run-server:
+	{{server_binary}} --white-bot ./dist/bot --black-bot ./dist/bot --output-log ./logs/server.log
+
+run-viewer:
+	{{viewer_binary}}
+
+build:
+	uv sync && uvx pyinstaller --onefile bot/python/bot.py
