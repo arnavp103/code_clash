@@ -34,7 +34,7 @@ class Evaluation:
     def __init__(self):
         self.turns = 1
         self.evallock = threading.Lock()
-        self.eval = 0.5
+        self.eval = 0
 
     def print_gameboard(self, gameboard):
         for i in range (10):
@@ -192,7 +192,7 @@ class Evaluation:
         rldiagonalwin = [0b0000000001, 0b0000000010, 0b0000000100, 0b0000001000, 0b0000010000, 0b0000100000,
                          0b0001000000, 0b0010000000, 0b0100000000, 0b1000000000]
         closewins = [0b0111100000, 0b0011110000, 0b0001111000, 0b0000111100, 0b0000011110]
-        self.eval = 0.5
+        self.eval = 0
         threads = []
         t = threading.Thread(target=self.check_horiz, args=(gameboard, turn, self.eval))
         threads.append(t)
