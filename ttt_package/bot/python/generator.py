@@ -5,12 +5,13 @@
 class Evaluation:
     def __init__(self):
         self.turns = 1
+
     def print_gameboard(self, gameboard):
         for i in range (10):
             print ("{0:b}".format(gameboard[i]))
 
     def evaluate(self, factor, penalty):
-        a = (0.01 * factor) - penalty / 100
+        a = (0.14 * factor) - (penalty + 10) / 100
         if (a < 0):
             return 0
         return a
@@ -58,11 +59,15 @@ class Evaluation:
         # first check top to bottom diagonal moving left to right
         print("madattheinternet")
         dw1 = lrdiagonalwin
+        print (gameboard)
         for i in range(5):
             wincount = 0
             check = [a & b for a, b in zip(gameboard, dw1)]
+            print ("zzzzzzzzzzzzzzz")
+            z = 0
             for row in check:
-                if row == dw1[0]:
+                print(row)
+                if (row == dw1[z]) and (row != 0):
                     wincount += 1
                 else:
                     if (wincount != 1):
@@ -70,6 +75,8 @@ class Evaluation:
                     wincount = 0
                 if (wincount == 5):
                     return float('inf') # we have a win
+                z += 1
+            print("zzzzzzzzzzzzzzz")
             for z in range(10):
                 dw1[z] = dw1[z] >> 1
         # second check right to left
@@ -78,8 +85,9 @@ class Evaluation:
         for i in range(5):
             wincount = 0
             check = [a & b for a, b in zip(gameboard, dw1)]
+            z = 0
             for row in check:
-                if row == dw1[0]:
+                if (row == dw1[z]) and (row != 0):
                     wincount += 1
                 else:
                     if (wincount != 1):
@@ -87,6 +95,7 @@ class Evaluation:
                     wincount = 0
                 if (wincount == 5):
                     return float('inf')  # we have a win
+                z += 1
             for z in range(10):
                 dw1[z] = dw1[z] << 1
 
@@ -96,13 +105,10 @@ class Evaluation:
         dw1 = rldiagonalwin
         for i in range(5):
             wincount = 0
-            self.print_gameboard(gameboard)
-            print("ruhroh")
             check = [a & b for a, b in zip(gameboard, dw1)]
-            self.print_gameboard(check)
-            print("ruhroh1")
+            z = 0
             for row in check:
-                if (row == dw1[0]) and (row != 0):
+                if (row == dw1[z]) and (row != 0):
                     wincount += 1
                 else:
                     if (wincount != 1):
@@ -110,6 +116,7 @@ class Evaluation:
                     wincount = 0
                 if (wincount == 5):
                     return float('inf')  # we have a win
+                z += 1
             for z in range(10):
                 dw1[z] = dw1[z] >> 1
         # second check right to left
@@ -118,8 +125,9 @@ class Evaluation:
         for i in range(5):
             wincount = 0
             check = [a & b for a, b in zip(gameboard, dw1)]
+            z = 0
             for row in check:
-                if (row == dw1[0]) and (row != 0):
+                if (row == dw1[z]) and (row != 0):
                     wincount += 1
                 else:
                     if (wincount != 1):
@@ -127,11 +135,14 @@ class Evaluation:
                     wincount = 0
                 if (wincount == 5):
                     return float('inf')  # we have a win
+                z += 1
             for z in range(10):
                 dw1[z] = dw1[z] << 1
         return eval
 
 b = Evaluation()
-g  = [0b0000000000, 0b0000000000, 0b0000000000, 0b0010000000, 0b0010000000, 0b0010000000,
-                         0b0010000000, 0b0010000000, 0b0100000000, 0b1000000000]
+# [0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000,
+#                          0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000]
+g  = [0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000010000,
+                          0b0000001000, 0b0000000100, 0b0000000010, 0b0000000001]
 print(b.shit2(g, 0))
