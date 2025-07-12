@@ -22,6 +22,7 @@ For rules, move format, and submission details see design_doc.md.
 import sys
 import json
 from typing import Literal
+import evaluate
 
 type Board = list[list[Literal["X", "O", ""]]]
 
@@ -34,11 +35,6 @@ def get_valid_moves(board: Board) -> list[tuple[int, int]]:
             if cell == "":
                 moves.append((i, j))
     return moves
-
-
-def evaluate_board(board: Board) -> float:
-    """Basic heuristic: +inf if X wins, -inf if O wins, 0 if draw, between if one side favored."""
-    return 0
 
 
 def choose_move(board: Board, player: Literal["X"] | Literal["O"]) -> tuple[int, int]:
@@ -93,7 +89,7 @@ def alpha_beta_pruning(
     """
     # Terminal conditions
     if depth == 0:
-        return evaluate_board(board)
+        return evaluate.evaluate_board(board)
 
     valid_moves = get_valid_moves(board)
     if not valid_moves:
@@ -164,7 +160,7 @@ def main():
 
     # 2) Choose move
     try:
-        row, col = choose_move(board, player)
+        row, col = choose_move(board, player)  # pylint: disable=unpacking-non-sequence
     except Exception as e:  # pylint: disable=broad-except
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
