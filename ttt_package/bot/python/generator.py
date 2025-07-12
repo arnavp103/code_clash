@@ -1,6 +1,24 @@
 """
 # player true means x
 """
+class Board:
+    def __init__(self, xplayer):
+        self.gameboard = [0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000,
+                         0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000]
+        if xplayer:
+            self.player = "X"
+        else:
+            self.player = "O"
+
+    def applymoves(self, board):
+        new = 0b1000000000
+        for x in range(len(board)):
+            for y in range(len(board[x])):
+                if board[x][y] == self.player:
+                    p = new >> y
+                    self.gameboard[x] = self.gameboard[x] | p
+
+
 # Generate Board
 class Evaluation:
     def __init__(self):
