@@ -232,7 +232,6 @@ class Evaluation:
         # first check moving left to right
 
         # second check right to left
-        return eval
 
 b = Evaluation()
 # [0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000,
