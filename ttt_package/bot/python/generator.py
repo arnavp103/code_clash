@@ -18,6 +18,15 @@ class Board:
                     p = new >> y
                     self.gameboard[x] = self.gameboard[x] | p
 
+    def checkmove(self, board, x, y):
+        new = 0b1000000000
+        p = new >> x
+        if (board is None):
+            test = self.gameboard.copy()
+        else:
+            test = board.copy()
+        test[y] = test[y] | p
+        return test
 
 # Generate Board
 class Evaluation:
