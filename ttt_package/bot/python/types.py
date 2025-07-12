@@ -1,4 +1,4 @@
-from typing import Literal, Union
+from typing import Literal
 
 type Board = list[list[Literal["X", "O", ""]]]
 type Evaluation = float

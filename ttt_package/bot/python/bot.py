@@ -22,7 +22,7 @@ For rules, move format, and submission details see design_doc.md.
 import sys
 import json
 from typing import Literal
-from types import Board, Move, Evaluation, EvaluatedMove
+from types import Board, Move, EvaluatedMove
 from evaluate import evaluate_board
 from GameTree import GameTree
 
@@ -133,7 +133,7 @@ def main():
 
     # 2) Choose move
     try:
-        row, col = choose_move(board, player)
+        row, col = choose_move(board, player)  # pylint: disable=unpacking-non-sequence
     except Exception as e:  # pylint: disable=broad-except
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)
