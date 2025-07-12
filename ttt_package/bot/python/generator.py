@@ -1,17 +1,18 @@
 import threading
+from common import *
+
 """
 # player true means x
 """
-class Board:
-    def __init__(self, xplayer):
-        self.gameboard = [0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000,
-                         0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000]
-        if xplayer:
-            self.player = "X"
-        else:
-            self.player = "O"
 
-    def applymoves(self, board):
+
+class Board:
+    def __init__(self, player: Player):
+        self.gameboard: BitBoard = [0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000,
+                          0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000]
+        self.player = player
+
+    def applymoves(self, board: JSONBoard):
         new = 0b1000000000
         for x in range(len(board)):
             for y in range(len(board[x])):
@@ -19,30 +20,31 @@ class Board:
                     p = new >> y
                     self.gameboard[x] = self.gameboard[x] | p
 
-    def checkmove(self, board, x, y):
+    def checkmove(self, board: BitBoard, x, y):
         new = 0b1000000000
         p = new >> x
-        if (board is None):
+        if board is None:
             test = self.gameboard.copy()
         else:
             test = board.copy()
         test[y] = test[y] | p
         return test
 
+
 # Generate Board
 class Evaluation:
     def __init__(self):
         self.turns = 1
         self.evallock = threading.Lock()
-        self.eval = 0
+        self.eval = TIE_EVALUATION
 
     def print_gameboard(self, gameboard):
-        for i in range (10):
-            print ("{0:b}".format(gameboard[i]))
+        for i in range(10):
+            print("{0:b}".format(gameboard[i]))
 
     def evaluate(self, factor, penalty):
         a = (0.14 * factor) - (penalty + 10) / 100
-        if (a < 0):
+        if a < 0:
             return 0
         return a
 
@@ -57,7 +59,7 @@ class Evaluation:
                     self.evallock.release()
                     return 0
                 rowcount = bin(row).count('1')
-                if (rowcount > 1):
+                if rowcount > 1:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += self.evaluate(rowcount, turn)
                     self.evallock.release()
@@ -74,12 +76,12 @@ class Evaluation:
                 if row == vw:
                     wincount += 1
                 else:
-                    if (wincount != 1):
+                    if wincount != 1:
                         self.evallock.acquire(blocking=True, timeout=-1)
                         self.eval += self.evaluate(wincount, turn)
                         self.evallock.release()
                     wincount = 0
-                if (wincount == 5):
+                if wincount == 5:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
@@ -89,7 +91,7 @@ class Evaluation:
 
     def check_diagonal1(self, gameboard, turn, eval):
         dw1 = [0b1000000000, 0b0100000000, 0b0010000000, 0b0001000000, 0b0000100000, 0b0000010000,
-                         0b0000001000, 0b0000000100, 0b0000000010, 0b0000000001]
+               0b0000001000, 0b0000000100, 0b0000000010, 0b0000000001]
         for i in range(5):
             wincount = 0
             check = [a & b for a, b in zip(gameboard, dw1)]
@@ -98,12 +100,12 @@ class Evaluation:
                 if (row == dw1[z]) and (row != 0):
                     wincount += 1
                 else:
-                    if (wincount != 1):
+                    if wincount != 1:
                         self.evallock.acquire(blocking=True, timeout=-1)
                         self.eval += self.evaluate(wincount, turn)
                         self.evallock.release()
                     wincount = 0
-                if (wincount == 5):
+                if wincount == 5:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
@@ -115,7 +117,7 @@ class Evaluation:
 
     def check_diagonal2(self, gameboard, turn, eval):
         dw1 = [0b1000000000, 0b0100000000, 0b0010000000, 0b0001000000, 0b0000100000, 0b0000010000,
-                         0b0000001000, 0b0000000100, 0b0000000010, 0b0000000001]
+               0b0000001000, 0b0000000100, 0b0000000010, 0b0000000001]
         for i in range(5):
             wincount = 0
             check = [a & b for a, b in zip(gameboard, dw1)]
@@ -124,12 +126,12 @@ class Evaluation:
                 if (row == dw1[z]) and (row != 0):
                     wincount += 1
                 else:
-                    if (wincount != 1):
+                    if wincount != 1:
                         self.evallock.acquire(blocking=True, timeout=-1)
                         self.eval += self.evaluate(wincount, turn)
                         self.evallock.release()
                     wincount = 0
-                if (wincount == 5):
+                if wincount == 5:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
@@ -150,12 +152,12 @@ class Evaluation:
                 if (row == dw1[z]) and (row != 0):
                     wincount += 1
                 else:
-                    if (wincount != 1):
+                    if wincount != 1:
                         self.evallock.acquire(blocking=True, timeout=-1)
                         self.eval += self.evaluate(wincount, turn)
                         self.evallock.release()
                     wincount = 0
-                if (wincount == 5):
+                if wincount == 5:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
@@ -164,6 +166,7 @@ class Evaluation:
             for z in range(10):
                 dw1[z] = dw1[z] >> 1
         return 0
+
     def check_diagonal4(self, gameboard, turn, eval):
         dw1 = [0b0000000001, 0b0000000010, 0b0000000100, 0b0000001000, 0b0000010000, 0b0000100000,
                0b0001000000, 0b0010000000, 0b0100000000, 0b1000000000]
@@ -175,12 +178,12 @@ class Evaluation:
                 if (row == dw1[z]) and (row != 0):
                     wincount += 1
                 else:
-                    if (wincount != 1):
+                    if wincount != 1:
                         self.evallock.acquire(blocking=True, timeout=-1)
                         self.eval += self.evaluate(wincount, turn)
                         self.evallock.release()
                     wincount = 0
-                if (wincount == 5):
+                if wincount == 5:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
@@ -190,10 +193,9 @@ class Evaluation:
                 dw1[z] = dw1[z] << 1
         return 0
 
-    def shit2(self, gameboard, penalty):
+    def shit2(self, gameboard: BitBoard, penalty):
         self.turns += 1
         turn = self.turns // 2
-
 
         rldiagonalwin = [0b0000000001, 0b0000000010, 0b0000000100, 0b0000001000, 0b0000010000, 0b0000100000,
                          0b0001000000, 0b0010000000, 0b0100000000, 0b1000000000]
@@ -239,9 +241,10 @@ class Evaluation:
 
         # second check right to left
 
+
 b = Evaluation()
 # [0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000,
 #                          0b0000000000, 0b0000000000, 0b0000000000, 0b0000000000]
-g  = [0b0000000000, 0b0000000000, 0b0010000000, 0b0001000000, 0b0000100000, 0b0000000000,
-                         0b0000001000, 0b0000000000, 0b0000000000, 0b0000000000]
+g = [0b0000000000, 0b0000000000, 0b0010000000, 0b0001000000, 0b0000100000, 0b0000000000,
+     0b0000001000, 0b0000000000, 0b0000000000, 0b0000000000]
 print(b.shit2(g, 0))

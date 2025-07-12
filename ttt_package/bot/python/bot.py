@@ -18,16 +18,14 @@ How to package your bot as a single file:
 
 For rules, move format, and submission details see design_doc.md.
 """
-
+from math import inf
 import sys
 import json
-from typing import Literal
-import evaluate
-
-type Board = list[list[Literal["X", "O", ""]]]
+from evaluate import evaluate_board
+from common import *
 
 
-def get_valid_moves(board: Board) -> list[tuple[int, int]]:
+def get_valid_moves(board: JSONBoard) -> list[Move]:
     """Return list of empty ([row, col]) cells on the board."""
     moves = []
     for i, row in enumerate(board):
@@ -37,15 +35,15 @@ def get_valid_moves(board: Board) -> list[tuple[int, int]]:
     return moves
 
 
-def choose_move(board: Board, player: Literal["X"] | Literal["O"]) -> tuple[int, int]:
+def choose_move(board: JSONBoard, player: Player) -> Move | None:
     """
-    Should return a tuple (row, col) from get_valid_moves(board).
+    Returns a tuple (row, col) from get_valid_moves(board) or None if there are no moves available (tie).
     """
     valid = get_valid_moves(board)
     if not valid:
-        raise ValueError("No valid moves available")
+        return None
 
-    best_eval = float("-inf")
+    best_eval = -inf
     best_move = None
     for valid_move in valid:
         # Make a hypothetical move
@@ -69,19 +67,16 @@ def choose_move(board: Board, player: Literal["X"] | Literal["O"]) -> tuple[int,
             best_eval = evaluation
             best_move = valid_move
 
-    move = best_move if best_move else None
-
-    if move is None:
-        raise ValueError("No valid moves found after evaluation")
-    return move
+    # best_move cannot be None because that would imply that making a move will cause a loss
+    return best_move
 
 
 def alpha_beta_pruning(
-    board: Board,
-    depth: int,
-    maximizing_player: bool,
-    alpha: float = float("-inf"),
-    beta: float = float("inf"),
+        board: JSONBoard,
+        depth: int,
+        maximizing_player: bool,
+        alpha: float = -inf,
+        beta: float = inf,
 ) -> float:
     """
     Minimax algorithm with alpha-beta pruning to evaluate the board position.
@@ -89,11 +84,11 @@ def alpha_beta_pruning(
     """
     # Terminal conditions
     if depth == 0:
-        return evaluate.evaluate_board(board)
+        return evaluate_board(board, "X" if maximizing_player else "O")
 
     valid_moves = get_valid_moves(board)
     if not valid_moves:
-        raise ValueError("No valid moves available")
+        return TIE_EVALUATION
 
     print(
         "Evaluating board at depth",
@@ -101,45 +96,35 @@ def alpha_beta_pruning(
         "for player",
         "X" if maximizing_player else "O",
         end=" ",
+        file=sys.stderr,
     )
 
-    if maximizing_player:
-        value = float("-inf")
-        for row, col in valid_moves:
-            # Make move
-            board[row][col] = "X"  # Since we are maximizing for "X"
-            # Recursive call
-            eval_score = alpha_beta_pruning(board, depth - 1, False, alpha, beta)
-            # Undo move
-            board[row][col] = ""
+    value = -inf if maximizing_player else inf
+    for row, col in valid_moves:
+        # Make move
+        board[row][col] = "X"  # Since we are maximizing for "X"
+        # Recursive call
+        eval_score = alpha_beta_pruning(board, depth - 1, False, alpha, beta)
+        # Undo move
+        board[row][col] = ""
 
+        if maximizing_player:
             value = max(value, eval_score)
 
             if value > beta:
                 break  # Beta cut-off
 
             alpha = max(alpha, value)
-
-        print("->", value)
-        return value
-    else:
-        value = float("inf")
-        for row, col in valid_moves:
-            # Make move
-            board[row][col] = "O"  # Since we are minimizing for "O"
-            # Recursive call
-            eval_score = alpha_beta_pruning(board, depth - 1, True, alpha, beta)
-            # Undo move
-            board[row][col] = ""
-
+        else:
             value = min(value, eval_score)
 
             if value < alpha:
                 break  # Alpha cut-off
 
             beta = min(beta, value)
-        print("->", value)
-        return value
+
+    print("->", value, file=sys.stderr)
+    return value
 
 
 def main():
