@@ -55,6 +55,7 @@ class Evaluation:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')
                     self.evallock.release()
+                    return 0
                 rowcount = bin(row).count('1')
                 if (rowcount > 1):
                     self.evallock.acquire(blocking=True, timeout=-1)
@@ -82,6 +83,7 @@ class Evaluation:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
+                    return 0
             vw = vw >> 1
         return 0
 
@@ -105,6 +107,7 @@ class Evaluation:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
+                    return 0
                 z += 1
             for z in range(10):
                 dw1[z] = dw1[z] >> 1
@@ -130,6 +133,7 @@ class Evaluation:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
+                    return 0
                 z += 1
             for z in range(10):
                 dw1[z] = dw1[z] << 1
@@ -155,6 +159,7 @@ class Evaluation:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
+                    return 0
                 z += 1
             for z in range(10):
                 dw1[z] = dw1[z] >> 1
@@ -179,6 +184,7 @@ class Evaluation:
                     self.evallock.acquire(blocking=True, timeout=-1)
                     self.eval += float('inf')  # we have a win
                     self.evallock.release()
+                    return 0
                 z += 1
             for z in range(10):
                 dw1[z] = dw1[z] << 1
