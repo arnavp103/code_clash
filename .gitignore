@@ -1,4 +1,5 @@
 .DS_store
+.idea
 *.spec
 build/
 
@@ -10,5 +11,6 @@ ttt_server*
 __pycache__/
 *.pyc
 *.pyo
+.venv
 
 state.json

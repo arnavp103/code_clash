@@ -22,11 +22,14 @@ For rules, move format, and submission details see design_doc.md.
 import sys
 import json
 from typing import Literal
+from types import Board, Move, Evaluation, EvaluatedMove
+from evaluate import evaluate_board
+from GameTree import GameTree
 
-type Board = list[list[Literal["X", "O", ""]]]
+tree = GameTree(None, None, None)
 
 
-def get_valid_moves(board: Board) -> list[tuple[int, int]]:
+def get_valid_moves(board: Board) -> list[Move]:
     """Return list of empty ([row, col]) cells on the board."""
     moves = []
     for i, row in enumerate(board):
@@ -36,64 +39,37 @@ def get_valid_moves(board: Board) -> list[tuple[int, int]]:
     return moves
 
 
-def evaluate_board(board: Board) -> float:
-    """Basic heuristic: +inf if X wins, -inf if O wins, 0 if draw, between if one side favored."""
-    return 0
-
-
-def choose_move(board: Board, player: Literal["X"] | Literal["O"]) -> tuple[int, int]:
+def choose_move(board: Board, player: Literal["X"] | Literal["O"]) -> Move:
     """
     Should return a tuple (row, col) from get_valid_moves(board).
     """
-    valid = get_valid_moves(board)
-    if not valid:
-        raise ValueError("No valid moves available")
 
-    best_eval = float("-inf")
-    best_move = None
-    for valid_move in valid:
-        # Make a hypothetical move
-        row, col = valid_move
-        board[row][col] = player
-        evaluation = alpha_beta_pruning(
-            board,
-            depth=3,
-            maximizing_player=False,
-            alpha=float("-inf"),
-            beta=float("inf"),
-        )
-        # Undo the hypothetical move
-        board[row][col] = ""
+    evaluation, move = alpha_beta_pruning(
+        board,
+        tree,
+        depth=3,
+        maximizing_player=True if player == "X" else False,
+        alpha=float("-inf"),
+        beta=float("inf"),
+    )
 
-        # flip the evaluation if the player is "O"
-        if player == "O":
-            evaluation = -evaluation
-
-        if evaluation > best_eval:
-            best_eval = evaluation
-            best_move = valid_move
-
-    move = best_move if best_move else None
-
-    if move is None:
-        raise ValueError("No valid moves found after evaluation")
     return move
 
 
 def alpha_beta_pruning(
-    board: Board,
-    depth: int,
-    maximizing_player: bool,
-    alpha: float = float("-inf"),
-    beta: float = float("inf"),
-) -> float:
+        board: Board,
+        gtree: GameTree,
+        depth: int,
+        maximizing_player: bool,
+        alpha: float = float("-inf"),
+        beta: float = float("inf"),
+) -> EvaluatedMove:
     """
     Minimax algorithm with alpha-beta pruning to evaluate the board position.
-    Returns the evaluation score for the current position.
     """
     # Terminal conditions
     if depth == 0:
-        return evaluate_board(board)
+        return evaluate_board(board), gtree.move_from_parent
 
     valid_moves = get_valid_moves(board)
     if not valid_moves:
@@ -107,43 +83,36 @@ def alpha_beta_pruning(
         end=" ",
     )
 
-    if maximizing_player:
-        value = float("-inf")
-        for row, col in valid_moves:
-            # Make move
-            board[row][col] = "X"  # Since we are maximizing for "X"
-            # Recursive call
-            eval_score = alpha_beta_pruning(board, depth - 1, False, alpha, beta)
-            # Undo move
-            board[row][col] = ""
+    value = float("-inf")
+    best_move: Move | None = None
+    for move in valid_moves:
+        row, col = move
+        # Make move
+        board[row][col] = "X"  # Since we are maximizing for "X"
+        gtree.add_child(move, None)
+        # Recursive call
+        eval_score, _ = alpha_beta_pruning(board, gtree.children[move], depth - 1, False, alpha, beta)
+        # Undo move
+        board[row][col] = ""
+        gtree.children[move].evalv = eval_score
 
-            value = max(value, eval_score)
-
+        if maximizing_player:
+            if value < eval_score:
+                best_move = move
             if value > beta:
+                gtree.pruned = True
                 break  # Beta cut-off
-
             alpha = max(alpha, value)
-
-        print("->", value)
-        return value
-    else:
-        value = float("inf")
-        for row, col in valid_moves:
-            # Make move
-            board[row][col] = "O"  # Since we are minimizing for "O"
-            # Recursive call
-            eval_score = alpha_beta_pruning(board, depth - 1, True, alpha, beta)
-            # Undo move
-            board[row][col] = ""
-
-            value = min(value, eval_score)
-
+        else:
+            if value > eval_score:
+                best_move = move
             if value < alpha:
+                gtree.pruned = True
                 break  # Alpha cut-off
 
             beta = min(beta, value)
-        print("->", value)
-        return value
+    print("->", value)
+    return value, best_move
 
 
 def main():
