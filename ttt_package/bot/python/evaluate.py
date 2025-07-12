@@ -1,5 +1,5 @@
 from common import JSONBoard, Player
-from ttt_package.bot.python.generator import Evaluation, Board
+from generator import Evaluation, Board
 
 
 def evaluate_board(j_board: JSONBoard, player: Player) -> float:
