@@ -4,7 +4,16 @@
 # Generate Board
 class Evaluation:
     def __init__(self):
-        self.turns = 0
+        self.turns = 1
+    def print_gameboard(self, gameboard):
+        for i in range (10):
+            print ("{0:b}".format(gameboard[i]))
+
+    def evaluate(self, factor, penalty):
+        a = (0.01 * factor) - penalty / 100
+        if (a < 0):
+            return 0
+        return a
 
     def shit2(self, gameboard, penalty):
         self.turns += 1
@@ -18,6 +27,7 @@ class Evaluation:
         closewins = [0b0111100000, 0b0011110000, 0b0001111000, 0b0000111100, 0b0000011110]
         eval = 0.5 - penalty
         # Check for horizontal win
+        print("madattheinternet")
         hw = horizontalwin
         for i in range(5):
             check = [a & hw for a in gameboard]
@@ -26,51 +36,54 @@ class Evaluation:
                     return float('inf')
                 rowcount = bin(row).count('1')
                 if (rowcount > 1):
-                    eval += (0.1 * rowcount)/(turn//4)
-            for z in range(10):
-                hw = hw >> 1
+                    eval += self.evaluate(rowcount, turn)
+            hw = hw >> 1
+        print("madattheinternet")
         # Check for vertical win
-        wincount = 0
         vw = verticalwin
         for i in range(10):
+            wincount = 0
             check = [a & vw for a in gameboard]
             for row in check:
                 if row == vw:
                     wincount += 1
                 else:
                     if (wincount != 1):
-                        eval += (0.1 * wincount)/(turn//4)
+                        eval += self.evaluate(wincount, turn)
                     wincount = 0
                 if (wincount == 5):
                     return float('inf') # we have a win
-            for z in range(10):
-                vw = vw >> 1
+            vw = vw >> 1
         # Check for diagonal win
         # first check top to bottom diagonal moving left to right
+        print("madattheinternet")
         dw1 = lrdiagonalwin
         for i in range(5):
+            wincount = 0
             check = [a & b for a, b in zip(gameboard, dw1)]
             for row in check:
-                if row == vw[0]:
+                if row == dw1[0]:
                     wincount += 1
                 else:
                     if (wincount != 1):
-                        eval += (0.1 * wincount)/(turn//4)
+                        eval += self.evaluate(wincount, turn)
                     wincount = 0
                 if (wincount == 5):
                     return float('inf') # we have a win
             for z in range(10):
                 dw1[z] = dw1[z] >> 1
         # second check right to left
+        print("madattheinternet")
         dw1 = lrdiagonalwin
         for i in range(5):
+            wincount = 0
             check = [a & b for a, b in zip(gameboard, dw1)]
             for row in check:
-                if row == vw[0]:
+                if row == dw1[0]:
                     wincount += 1
                 else:
                     if (wincount != 1):
-                        eval += (0.1 * wincount)/(turn//4)
+                        eval += self.evaluate(wincount, turn)
                     wincount = 0
                 if (wincount == 5):
                     return float('inf')  # we have a win
@@ -79,33 +92,46 @@ class Evaluation:
 
         # now we check with a bottom to top diagonal
         # first check moving left to right
+        print("madattheinternet")
         dw1 = rldiagonalwin
         for i in range(5):
+            wincount = 0
+            self.print_gameboard(gameboard)
+            print("ruhroh")
             check = [a & b for a, b in zip(gameboard, dw1)]
+            self.print_gameboard(check)
+            print("ruhroh1")
             for row in check:
-                if row == vw[0]:
+                if (row == dw1[0]) and (row != 0):
                     wincount += 1
                 else:
                     if (wincount != 1):
-                        eval += (0.1 * wincount)/(turn//4)
+                        eval += self.evaluate(wincount, turn)
                     wincount = 0
                 if (wincount == 5):
                     return float('inf')  # we have a win
             for z in range(10):
                 dw1[z] = dw1[z] >> 1
         # second check right to left
+        print("madattheinternet")
         dw1 = rldiagonalwin
         for i in range(5):
+            wincount = 0
             check = [a & b for a, b in zip(gameboard, dw1)]
             for row in check:
-                if row == vw[0]:
+                if (row == dw1[0]) and (row != 0):
                     wincount += 1
                 else:
                     if (wincount != 1):
-                        eval += (0.1 * wincount)/(turn//4)
+                        eval += self.evaluate(wincount, turn)
                     wincount = 0
                 if (wincount == 5):
                     return float('inf')  # we have a win
             for z in range(10):
                 dw1[z] = dw1[z] << 1
-        return 0
+        return eval
+
+b = Evaluation()
+g  = [0b0000000000, 0b0000000000, 0b0000000000, 0b0010000000, 0b0010000000, 0b0010000000,
+                         0b0010000000, 0b0010000000, 0b0100000000, 0b1000000000]
+print(b.shit2(g, 0))
